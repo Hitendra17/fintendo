@@ -1,6 +1,14 @@
+import logging
+
 from fastapi import FastAPI
 
 from fintendo.core.config import settings
+from fintendo.core.logging import configure_logging
+
+
+configure_logging()
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -12,6 +20,8 @@ app = FastAPI(
 
 @app.get("/health")
 def health_check():
+    logger.info("Health check requested")
+
     return {
         "status": "healthy",
         "service": "fintendo",
