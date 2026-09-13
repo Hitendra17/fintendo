@@ -5,9 +5,19 @@ description = "Agentic quantitative research and trading platform"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "beautifulsoup4>=4.15.0",
     "fastapi",
+    "google-genai>=2.22.0",
+    "numpy>=2.5.2",
+    "pandas>=3.0.5",
+    "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
+    "pypdf>=6.17.0",
+    "qdrant-client>=1.19.0",
+    "requests>=2.34.2",
+    "sentence-transformers>=6.0.1",
     "uvicorn[standard]",
+    "yfinance>=1.7.0",
 ]
 
 [build-system]
@@ -16,3 +26,13 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that require external services or infrastructure",
+]
