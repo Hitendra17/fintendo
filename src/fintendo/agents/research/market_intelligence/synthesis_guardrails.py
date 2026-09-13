@@ -37,7 +37,7 @@ class MarketIntelligenceSynthesisGuardrail:
         self._validate_summary(analysis)
         self._validate_outlook(analysis)
 
-        self._validate_event_references(
+        analysis = self._validate_event_references(
             analysis=analysis,
             events=events,
         )
@@ -92,24 +92,30 @@ class MarketIntelligenceSynthesisGuardrail:
     def _validate_event_references(
         analysis: MarketIntelligenceAnalysis,
         events: list[MarketEvent],
-    ) -> None:
+    ) -> MarketIntelligenceAnalysis:
         event_sources = {
             str(event.source_url).strip().lower()
             for event in events
         }
 
+        validated_key_events: list[MarketEvent] = []
+
         for event in analysis.key_events:
-            if event.ticker.strip().upper() != analysis.ticker.strip().upper():
-                raise ValueError(
-                    "Key event ticker does not match analysis ticker."
-                )
+            if (
+                event.ticker.strip().upper()
+                != analysis.ticker.strip().upper()
+            ):
+                continue
 
             event_source = str(event.source_url).strip().lower()
 
             if event_source not in event_sources:
-                raise ValueError(
-        "Analysis contains a key event whose source was not "
-        "present in the validated event set. "
-        f"Returned source_url={event_source!r}. "
-        f"Validated source_urls={sorted(event_sources)!r}."
-    )
+                continue
+
+            validated_key_events.append(event)
+
+        return analysis.model_copy(
+            update={
+                "key_events": validated_key_events,
+            }
+        )

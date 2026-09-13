@@ -130,7 +130,7 @@ def build_committee_service() -> CommitteeResearchService:
 
 
 def main() -> None:
-    ticker = "SIEMENS"
+    ticker = "EMBASSY"
 
     print("=" * 80)
     print("FINTENDO RESEARCH")
