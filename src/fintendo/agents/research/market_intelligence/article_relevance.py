@@ -8,7 +8,7 @@ from fintendo.llm.gemini import GeminiClient
 class WebArticleCandidate(BaseModel):
     title: str = Field(min_length=1)
     source: str = Field(min_length=1)
-    url: str = Field(min_length=1)
+    url: str = ""
     published_at: str | None = None
     summary: str = Field(min_length=1)
     reason: str = Field(min_length=1)
@@ -172,6 +172,9 @@ Return ONLY valid JSON in this exact structure:
 
         for article in result.articles:
             url = article.url.strip()
+
+            if not url:
+                continue
 
             # Reject Markdown-formatted URLs.
             if url.startswith("[") or "](" in url:

@@ -18,6 +18,8 @@ dependencies = [
     "sentence-transformers>=6.0.1",
     "uvicorn[standard]",
     "yfinance>=1.7.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
 ]
 
 [build-system]
@@ -36,3 +38,4 @@ dev = [
 markers = [
     "integration: tests that require external services or infrastructure",
 ]
+

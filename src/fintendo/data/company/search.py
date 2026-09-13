@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 import yfinance as yf
 
-
 @dataclass(frozen=True)
 class CompanySearchResult:
     ticker: str

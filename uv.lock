@@ -530,6 +530,7 @@ dev = [
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.15.0" },
     { name = "fastapi" },
+    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "google-genai", specifier = ">=2.22.0" },
     { name = "numpy", specifier = ">=2.5.2" },
     { name = "pandas", specifier = ">=3.0.5" },
@@ -540,6 +541,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.34.2" },
     { name = "sentence-transformers", specifier = ">=6.0.1" },
     { name = "uvicorn", extras = ["standard"] },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
     { name = "yfinance", specifier = ">=1.7.0" },
 ]
 
