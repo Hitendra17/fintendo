@@ -3,7 +3,10 @@ from fintendo.data.market_client import MarketDataClient
 
 
 class CompanyProfileResolver:
-    def __init__(self, market_data: MarketDataClient | None = None) -> None:
+    def __init__(
+        self,
+        market_data: MarketDataClient | None = None,
+    ) -> None:
         self.market_data = market_data or MarketDataClient()
 
     def resolve(self, ticker: str) -> CompanyProfile:
@@ -15,12 +18,9 @@ class CompanyProfileResolver:
         metadata = self.market_data.get_company_metadata(ticker)
 
         official_website = metadata.get("official_website")
-        if not official_website:
-            raise ValueError(
-                f"No official website found for {ticker}."
-            )
 
         sectors = []
+
         if metadata.get("sector"):
             sectors.append(metadata["sector"])
 
