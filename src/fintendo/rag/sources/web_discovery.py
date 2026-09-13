@@ -24,6 +24,10 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
         8. Deduplicate and return the highest-value documents.
 
     Gemini is deliberately not involved here.
+
+    Company website information is optional. If neither an investor
+    relations URL nor an official website is available, this source
+    simply returns no documents instead of failing the research run.
     """
 
     DEFAULT_TIMEOUT_SECONDS = 15
@@ -114,11 +118,18 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
 
         base_url = self._resolve_base_url(profile)
 
+        # Company website information is optional.
+        # If neither an IR URL nor an official website exists,
+        # simply skip this discovery source.
+        if not base_url:
+            return []
+
         try:
             landing_page = self._fetch_page(base_url)
         except requests.HTTPError as exc:
             if (
                 profile.investor_relations_url
+                and profile.official_website
                 and exc.response is not None
                 and exc.response.status_code == 404
             ):
@@ -210,11 +221,14 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
     @staticmethod
     def _resolve_base_url(
         profile: CompanyProfile,
-    ) -> str:
+    ) -> str | None:
         if profile.investor_relations_url:
             return str(profile.investor_relations_url)
 
-        return str(profile.official_website)
+        if profile.official_website:
+            return str(profile.official_website)
+
+        return None
 
     @staticmethod
     def _source_name(
@@ -288,10 +302,7 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
             base_url
         ).netloc.lower()
 
-        section_candidates: list[
-            tuple[int, str]
-        ] = []
-
+        candidates: list[tuple[str, int]] = []
         seen: set[str] = set()
 
         for link in soup.find_all(
@@ -320,10 +331,10 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
             }:
                 continue
 
-            if (
-                parsed.netloc.lower()
-                != base_domain
-            ):
+            if parsed.netloc.lower() != base_domain:
+                continue
+
+            if parsed.fragment:
                 continue
 
             normalized_url = self._normalize_url(
@@ -333,51 +344,108 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
             if normalized_url in seen:
                 continue
 
-            if self._looks_like_document(
-                normalized_url
-            ):
-                continue
-
-            title = link.get_text(
-                " ",
-                strip=True,
+            path = parsed.path.rstrip(
+                "/"
             ).lower()
 
-            combined = (
-                f"{title} "
-                f"{normalized_url.lower()}"
+            if self._is_navigation_path(path):
+                continue
+
+            link_text = link.get_text(
+                " ",
+                strip=True,
             )
 
-            score = self._score_section_page(
-                combined
+            score = self._section_score(
+                link_text=link_text,
+                path=parsed.path,
             )
 
             if score <= 0:
                 continue
 
             seen.add(normalized_url)
-
-            section_candidates.append(
-                (score, normalized_url)
+            candidates.append(
+                (
+                    normalized_url,
+                    score,
+                )
             )
 
-        section_candidates.sort(
-            key=lambda item: item[0],
+        candidates.sort(
+            key=lambda item: item[1],
             reverse=True,
         )
 
         return [
             url
-            for _, url in section_candidates
+            for url, _score in candidates[
+                : self.MAX_SECTION_PAGES
+            ]
         ]
+
+    @staticmethod
+    def _section_score(
+        link_text: str,
+        path: str,
+    ) -> int:
+        value = (
+            f"{link_text} {path}"
+        ).lower()
+
+        keywords = {
+            "investor": 50,
+            "investors": 50,
+            "investor relations": 60,
+            "financial": 40,
+            "results": 45,
+            "annual report": 50,
+            "reports": 40,
+            "presentation": 40,
+            "earnings": 45,
+            "quarterly": 45,
+            "stock": 20,
+            "shareholder": 40,
+            "shareholders": 40,
+            "corporate": 20,
+            "news": 15,
+            "media": 15,
+        }
+
+        return sum(
+            score
+            for keyword, score in keywords.items()
+            if keyword in value
+        )
+
+    @staticmethod
+    def _is_navigation_path(
+        path: str,
+    ) -> bool:
+        navigation_terms = {
+            "/about",
+            "/careers",
+            "/career",
+            "/contact",
+            "/privacy",
+            "/terms",
+            "/cookie",
+            "/login",
+            "/signin",
+            "/signup",
+        }
+
+        return any(
+            path == term
+            or path.startswith(f"{term}/")
+            for term in navigation_terms
+        )
 
     def _extract_document_links(
         self,
         html: str,
         base_url: str,
-    ) -> list[
-        tuple[str, str, DocumentType]
-    ]:
+    ) -> list[tuple[str, str, DocumentType]]:
         soup = BeautifulSoup(
             html,
             "html.parser",
@@ -403,14 +471,8 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
                 href,
             )
 
-            normalized_url = (
-                self._normalize_url(
-                    absolute_url
-                )
-            )
-
             parsed = urlparse(
-                normalized_url
+                absolute_url
             )
 
             if parsed.scheme.lower() not in {
@@ -419,168 +481,115 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
             }:
                 continue
 
-            if not self._looks_like_document(
-                normalized_url
-            ):
-                continue
-
             title = link.get_text(
                 " ",
                 strip=True,
             )
 
-            if not title:
-                title = self._title_from_url(
-                    normalized_url
-                )
-
-            document_type = (
-                self._classify_document(
-                    url=normalized_url,
-                    title=title,
-                )
+            document_type = self._classify_document(
+                url=absolute_url,
+                title=title,
             )
 
-            if document_type is None:
+            if document_type == DocumentType.OTHER:
                 continue
 
             results.append(
                 (
-                    normalized_url,
-                    title,
+                    absolute_url,
+                    title or absolute_url,
                     document_type,
                 )
             )
 
         return results
 
-    @staticmethod
-    def _score_section_page(
-        value: str,
-    ) -> int:
-        section_keywords = {
-            "investor": 50,
-            "financial reporting": 45,
-            "financial results": 45,
-            "annual report": 45,
-            "quarterly results": 45,
-            "results": 30,
-            "presentation": 35,
-            "transcript": 35,
-            "earnings": 35,
-            "press release": 25,
-            "investor relations": 50,
-            "shareholder": 25,
-            "statutory filing": 40,
-            "corporate filing": 40,
-            "corporate announcement": 35,
-            "financial information": 40,
-            "reports": 30,
-        }
-
-        return sum(
-            score
-            for keyword, score
-            in section_keywords.items()
-            if keyword in value
-        )
-
-    def _score_document(
-        self,
-        url: str,
-        title: str,
-        document_type: DocumentType,
-    ) -> int:
-        combined = (
-            f"{title.lower()} "
-            f"{url.lower()}"
-        )
-
-        score = self.DOCUMENT_TYPE_PRIORITY.get(
-            document_type,
-            0,
-        )
-
-        for keyword, weight in (
-            self.HIGH_VALUE_KEYWORDS.items()
-        ):
-            if keyword in combined:
-                score += weight
-
-        for keyword, weight in (
-            self.LOW_VALUE_KEYWORDS.items()
-        ):
-            if keyword in combined:
-                score += weight
-
-        return score
-
-    @staticmethod
-    def _looks_like_document(
-        url: str,
-    ) -> bool:
-        path = urlparse(url).path.lower()
-
-        return path.endswith(".pdf")
-
-    @staticmethod
+    @classmethod
     def _classify_document(
+        cls,
         url: str,
         title: str,
-    ) -> DocumentType | None:
-        path_lower = urlparse(url).path.lower()
+    ) -> DocumentType:
+        value = (
+            f"{url} {title}"
+        ).lower()
 
-        if not path_lower.endswith(".pdf"):
-            return None
-
-        combined = (
-            f"{title.lower()} "
-            f"{url.lower()}"
-        )
-
-        # Check the most specific document types first.
-        if "annual report" in combined:
+        if (
+            "annual report" in value
+            or "annual-report" in value
+            or "annual_report" in value
+        ):
             return DocumentType.ANNUAL_REPORT
 
         if (
-            "transcript" in combined
-            or "conference call" in combined
-            or "earnings call" in combined
+            "quarterly result" in value
+            or "quarterly results" in value
+            or "financial result" in value
+            or "financial results" in value
         ):
-            return DocumentType.TRANSCRIPT
+            return DocumentType.QUARTERLY_RESULT
 
         if (
-            "presentation" in combined
-            or "earnings presentation" in combined
+            "investor presentation" in value
+            or "investor-presentation" in value
+            or "earnings presentation" in value
         ):
             return DocumentType.INVESTOR_PRESENTATION
 
         if (
-            "quarter" in combined
-            or "financial performance" in combined
-            or "financial result" in combined
-            or "financial results" in combined
+            "transcript" in value
+            or "conference call" in value
+            or "earnings call" in value
         ):
-            return DocumentType.QUARTERLY_RESULT
-
-        if "press release" in combined:
-            return DocumentType.PRESS_RELEASE
+            return DocumentType.TRANSCRIPT
 
         if (
-            "sustainability" in combined
-            or "csr" in combined
-            or "esg" in combined
+            "corporate filing" in value
+            or "exchange filing" in value
+        ):
+            return DocumentType.CORPORATE_FILING
+
+        if (
+            "sustainability report" in value
+            or "esg report" in value
         ):
             return DocumentType.SUSTAINABILITY_REPORT
 
         if (
-            "filing" in combined
-            or "corporate" in combined
-            or "announcement" in combined
+            "press release" in value
+            or "press-release" in value
+            or "media release" in value
+            or "media-release" in value
         ):
-            return DocumentType.CORPORATE_FILING
+            return DocumentType.PRESS_RELEASE
 
         return DocumentType.OTHER
+
+    @classmethod
+    def _score_document(
+        cls,
+        url: str,
+        title: str,
+        document_type: DocumentType,
+    ) -> int:
+        value = (
+            f"{url} {title}"
+        ).lower()
+
+        score = cls.DOCUMENT_TYPE_PRIORITY.get(
+            document_type,
+            0,
+        )
+
+        for keyword, weight in cls.HIGH_VALUE_KEYWORDS.items():
+            if keyword in value:
+                score += weight
+
+        for keyword, weight in cls.LOW_VALUE_KEYWORDS.items():
+            if keyword in value:
+                score += weight
+
+        return score
 
     @staticmethod
     def _normalize_url(
@@ -588,38 +597,8 @@ class WebDocumentDiscoverySource(DocumentDiscoverySource):
     ) -> str:
         parsed = urlparse(url)
 
-        scheme = parsed.scheme.lower()
-        netloc = parsed.netloc.lower()
-
-        path = (
-            parsed.path.rstrip("/")
-            or "/"
+        normalized = parsed._replace(
+            fragment=""
         )
 
-        return (
-            f"{scheme}://{netloc}{path}"
-        )
-
-    @staticmethod
-    def _title_from_url(
-        url: str,
-    ) -> str:
-        path = urlparse(
-            url
-        ).path.rstrip("/")
-
-        if not path:
-            return "Untitled Document"
-
-        filename = path.split("/")[-1]
-
-        if filename.lower().endswith(".pdf"):
-            filename = filename[:-4]
-
-        return (
-            filename
-            .replace("-", " ")
-            .replace("_", " ")
-            .strip()
-            .title()
-        )
+        return normalized.geturl().rstrip("/")
