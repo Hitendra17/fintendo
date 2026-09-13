@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///Users/hitendra/fintendo/frontend/app/research/page.tsx"],"sourcesContent":["export default function ResearchPage() {\n  return (\n    <main className=\"min-h-screen bg-slate-950 px-6 py-12 text-white\">\n      <div className=\"mx-auto max-w-7xl\">\n        <p className=\"text-sm font-bold uppercase tracking-[0.25em] text-slate-300\">\n          FINTENDO\n        </p>\n\n        <h1 className=\"mt-4 text-3xl font-semibold tracking-tight\">\n          Research Dashboard\n        </h1>\n\n        <p className=\"mt-2 text-slate-400\">\n          Company research will appear here.\n        </p>\n      </div>\n    </main>\n  );\n}"],"names":["ResearchPage","className"],"mappings":";;;;;;AAAe,SAASA;IACtB,qBACE,0PAAC;QAAKC,WAAU;kBACd,cAAA,0PAAC;YAAIA,WAAU;;8BACb,0PAAC;oBAAEA,WAAU;8BAA+D;;;;;;8BAI5E,0PAAC;oBAAGA,WAAU;8BAA6C;;;;;;8BAI3D,0PAAC;oBAAEA,WAAU;8BAAsB;;;;;;;;;;;;;;;;;AAM3C"}}]
-}

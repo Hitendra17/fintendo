@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///Users/hitendra/fintendo/frontend/app/page.tsx"],"sourcesContent":["import { CompanySearch } from \"@/components/search/CompanySearch\";\n\nexport default function Home() {\n  return (\n    <main className=\"min-h-screen bg-slate-950 px-6 py-16 text-white\">\n      <div className=\"mx-auto max-w-3xl\">\n        <div className=\"text-center\">\n          <p className=\"text-sm font-bold uppercase tracking-[0.3em] text-slate-300\">\n            FINTENDO\n          </p>\n\n          <h1 className=\"mt-5 text-5xl font-semibold tracking-tight\">\n            Research, grounded in evidence.\n          </h1>\n\n          <p className=\"mx-auto mt-5 max-w-xl text-base leading-7 text-slate-400\">\n            Search any company to generate a comprehensive AI-powered equity\n            research report.\n          </p>\n        </div>\n\n        <div className=\"mt-10\">\n          <CompanySearch />\n        </div>\n      </div>\n    </main>\n  );\n}"],"names":["Home","className"],"mappings":";;;;;AAAA;;;AAEe,SAASA;IACtB,qBACE,0PAAC;QAAKC,WAAU;kBACd,cAAA,0PAAC;YAAIA,WAAU;;8BACb,0PAAC;oBAAIA,WAAU;;sCACb,0PAAC;4BAAEA,WAAU;sCAA8D;;;;;;sCAI3E,0PAAC;4BAAGA,WAAU;sCAA6C;;;;;;sCAI3D,0PAAC;4BAAEA,WAAU;sCAA2D;;;;;;;;;;;;8BAM1E,0PAAC;oBAAIA,WAAU;8BACb,cAAA,0PAAC,mKAAa;;;;;;;;;;;;;;;;;;;;;AAKxB"}},
-    {"offset": {"line": 88, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":""}}]
-}
